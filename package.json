@@ -1,0 +1,15 @@
+{
+  "name": "midilooper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./js/looper.js",
+  "dependencies": {
+    "webmidi": "^3.0.21"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "",
+  "license": "ISC"
+}
