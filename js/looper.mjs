@@ -1,9 +1,10 @@
-import { Track } from './track.js';
+import { Track } from './track.mjs';
 
 function Looper() {
+    const TRACK_COUNT = 4;
+    
     this.bpm = 120,
     this.bpmInMs = 500,
-    this.divisions = 4,
     this.isPlaying = false,
     this.isRecording = false,
     this.current = {

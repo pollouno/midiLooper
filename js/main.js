@@ -1,9 +1,6 @@
-import { Looper } from "./looper.js";
+import { Looper } from "./looper.mjs";
 
 const bpmLabel      = document.getElementById("bpm-label");
-const beatLabel     = document.getElementById("beat");
-const measureLabel  = document.getElementById("measure");
-const beatTimeLabel = document.getElementById("beatTime");
 
 const playButton  = document.getElementById("play-button" );
 const pauseButton = document.getElementById("pause-button");
@@ -14,10 +11,6 @@ function SetInOutValues()
 }
 
 function UpdateUI() {
-    beatTimeLabel.innerHTML = looper.current.beatTime.toFixed(2);
-    beatLabel.innerHTML = looper.current.beat % 4;
-    measureLabel.innerHTML = looper.current.measure;
-    
     bpmLabel.innerHTML = `${looper.bpm} (${looper.bpmInMs} ms)`;
     
     if(looper.isPlaying) {
@@ -31,7 +24,7 @@ function UpdateUI() {
 }
 
 
-var looper = new Looper();
-looper.Init(null, UpdateUI);
+window.looper = new Looper();
+window.looper.Init(null, UpdateUI);
 
 UpdateUI();
