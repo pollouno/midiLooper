@@ -30,7 +30,7 @@ function Track(looper) {
             this.ExecuteNextMessage();
     };
     this.RecordMessage = (msg) => {
-        this.messages.splice(this.trackPointer + 1, 0, {
+        this.messages.splice(this.trackPointer, 0, {
             time : this.quantize == 0 ? this.time : Quantize(this.time, 1/this.quantize),
             message : msg,
             played : true
