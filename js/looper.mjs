@@ -1,88 +1,113 @@
-import { Track } from './track.mjs';
+import { Track } from "./track.mjs";
 
-function Looper() {
-    this.TRACK_COUNT       = 4;
+function Looper(onTickCallback = null) {
     this.MAX_TRACK_LENGTH  = 16;    //In measures!
     this.MEASURE_LENGTH    = 4;
-    
-    this.bpm = 120;
-    this.bpmInMs = 500;
-    this.isPlaying = false;
-    this.isRecording = false;
-    this.isErasing = false;
+
     this.current = {
-        track : 0,
-        time : 0
-    };
+        bpm : 120,
+        measureLength : 2000,   //In ms!
+        track : -1,
+        Track : () => this.current.track == -1 ? null : this.track.trackArray[this.current.track],
+        isRecording : false
+    }
+
+    this.track = {
+        AddTrack : () => {
+            this.track.trackArray.splice(this.track.Count() - 1, 0, new Track(this));
+            this.current.track = this.track.Count() - 1;
+        },
+        RemoveTrack : (trackID) => { this.trackArray.splice(trackID, 1); this.current.track = -1; },
+        AreEmpty : () => {
+            this.track.trackArray.forEach(t => {
+                if(!t.IsEmpty())
+                    return false;
+            });
+            return true;
+        },
+        Count : () => { return this.track.trackArray.length; },
+        trackArray : []
+    }
+
+    this.input = {
+        REC_BUTTON   : 0,
+        PLAY_BUTTON  : 1,
+        STOP_BUTTON  : 2,
+        UNDO_BUTTON  : 3,
+        CLEAR_BUTTON : 4,
+        OnButton : (button) => {
+            
+        },
+        OnTrackButton : (track, button) => {
+            let changedTrack = false;
+            if(track != this.current.track) {
+                this.track.trackArray[this.current.track].OnDeselect();
+                this.track.trackArray[track].OnSelect();
+
+                this.current.track = track;
+                changedTrack = true;
+            }
+
+            switch(button) {
+                case REC_BUTTON:
+                    this.current.isRecording = changedTrack ? true : !this.current.isRecording;
+                    if(!this.current.isRecording)
+                        this.current.Track().EndSession();
+                    break;
+               case PLAY_BUTTON:
+                    if(!this.current.Track().IsPlaying())
+                        this.current.Track().Play();
+                    else
+                        this.current.Track().Pause();
+                    break;
+                case STOP_BUTTON:
+                    this.current.Track().Stop();
+                    break;
+                case UNDO_BUTTON:
+                    this.current.Track().Undo();
+                    break;
+                case CLEAR_BUTTON:
+                    this.current.Track().Clear();
+                    break;
+            }
+        }
+    }
+
     this.aux = {
-        lTime: -1,
-        tickHandler: null
-    };
-    this.Init = (onInitCallback = null, onTickCallback = null) => {
-        this.aux.tickHandler = setInterval(() => { this.OnTick(); onTickCallback?.()}, 5);
-        onInitCallback?.();
-    };
-    this.OnTick = () => {
-        if (!this.isPlaying)
-            return;
-        if (this.aux.lTime <= 0) {
-            this.aux.lTime = performance.now();
-            return;
-        }
+        lTick : 0,
+        tickInterval : null
+    }
 
-        let delta = (performance.now() - this.aux.lTime) / (this.bpmInMs * this.MEASURE_LENGTH); //delta 
-        this.current.time = (this.current.time + delta) % this.MAX_TRACK_LENGTH;
-
-        for (let i = 0; i < this.TRACK_COUNT; i++) {
-            this.tracks[i].OnTick(delta);
-        }
-        this.aux.lTime = performance.now();
-    };
     this.SetBPM = (bpm) => {
-        this.bpm = bpm;
-        this.bpmInMs = Math.round(60000 / bpm);
-    };
-    this.Play = () => { this.isPlaying = true; };
-    this.Pause = () => { this.isPlaying = false; };
-    this.Stop = () => {
-        this.current.beatTime = 0;
-        this.aux.lTime = -1;
-        this.tracks.forEach((t) => { t.Stop(); })
-        this.Pause();
-        if(this.isRecording)
-            this.ToggleRec();
-    };
-    
-    this.ToggleRec = () => {
-        this.isRecording = !this.isRecording;
-    
-        if(!this.isPlaying && this.isRecording)
-            this.Play();
-    };
-    
-    this.ResetTrack = () => {
-        this.tracks[this.current.track].ClearAll();
-    };
-    this.CutTrack = () => {
-        this.tracks[this.current.track].SetTrackLength();
-    };
-    
-    this.OnNoteOn  = (message) => {
-        
-    };
-    
-    this.OnNoteOff = (message) => {
-    
-    };
-    this.SetErasingMode = (b) => { this.isErasing = b; }
-    this.ChangeTrack = (t) => { this.current.track = t; };
-    this.tracks = [];
-    for (let i = 0; i < this.TRACK_COUNT; i++) {
-        this.tracks[i] = new Track(this);
-    };
-    this.ExecuteMessage = (msg) => {
+        this.current.bpm = bpm;
+        this.current.measureLength = Math.round((60000 / bpm) * this.MEASURE_LENGTH);
+    }
 
-    };
-};
+    this.OnTick = () => {
+        if(this.aux.lTick <= 0) {
+            this.aux.lTick = performance.now();
+            return;
+        }
 
-export { Looper };
+        const delta = (performance.now() - this.aux.lTick) / this.current.measureLength;
+        this.current.time = (this.current.time + delta) % this.MAX_TRACK_LENGTH;
+        this.track.trackArray.forEach(t => { t.OnTick(delta); });
+
+        this.aux.lTick = performance.now();
+    }
+
+    this.OnNoteOn  = (msg) => {
+        //Passthrough to channel !
+
+        if(this.current.isRecording)
+            this.current.Track().RecordMessage(msg);
+    };
+    this.OnNoteOff = (msg) => {
+        //Passthrough to channel !
+
+        if(this.current.isRecording)
+            this.current.Track().RecordMessage(msg);
+    };
+
+    this.aux.tickInterval = setInterval(() => { this.OnTick(); onTickCallback?.(); });
+}
