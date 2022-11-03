@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <title>Cool MIDI looper!</title>
+</head>
+
+<body>
+    <h1>Cool MIDI looper!</h1>
+    <select name="in-select" id="in-select">
+        <option value="none">Select an input...</option>
+    </select>
+    <select name="out-select" id="out-select">
+        <option value="none">Select an output...</option>
+    </select>
+    <br>
+    <br>
+    <input type="range" min="60" max="240" id="bpm" value="120" oninput="looper.SetBPM(this.value)">
+    <label for="time" id="bpm-label">--</label>
+
+    <p>
+        <button onclick="looper.ToggleRec()" id="rec-button"  >Rec</button>
+        <button onclick="looper.Play();"     id="play-button" >Play</button>
+        <button onclick="looper.Pause();"    id="pause-button">Pause</button>
+        <button onclick="looper.Stop();"     id="stop-button" >Stop</button>
+    </p>
+    <p>
+        <button id="cutloop-button" onclick="looper.CutTrack()">Cut  </button>
+        <button id="erase-button"   onmousedown="looper.SetErasingMode(true)" onmousedown="looper.SetErasingMode(false)" >Erase</button>
+        <button id="clear-button"   onclick="looper.ResetTrack()">Clear</button>
+    </p>
+    <p>
+        <button id="quatize-button" >Quantize</button> : <span id="quantize-label">OFF</span>
+    </p>
+    <div>
+        <p>
+            <span id="track-labelA">Track A</span> 
+            - Time: <span id="track-timeA">--</span>/<span id="track-lengthA">--</span>
+            Messages: <span id="track-msg-countA">0</span> . . .
+            <button onclick="looper.ChangeTrack(0)" id="select-trackA">Select</button>
+            <button onclick="looper.tracks[0].ToggleMute()" id="mute-trackA">Mute</button>
+        </p>
+    </div>
+    <div>
+        <p>
+            <span id="track-labelB">Track B</span> 
+            - Time: <span id="track-timeB">--</span>/<span id="track-lengthB">--</span>
+            Messages: <span id="track-msg-countB">0</span> . . .
+            <button onclick="looper.ChangeTrack(1)" id="select-trackB">Select</button>
+            <button onclick="looper.tracks[1].ToggleMute()" id="mute-trackB">Mute</button>
+        </p>
+    </div>
+    <div>
+        <p>
+            <span id="track-labelC">Track C</span> 
+            - Time: <span id="track-timeC">--</span>/<span id="track-lengthC">--</span>
+            Messages: <span id="track-msg-countC">0</span> . . .
+            <button onclick="looper.ChangeTrack(2)" id="select-trackC">Select</button>
+            <button onclick="looper.tracks[2].ToggleMute()" id="mute-trackC">Mute</button>
+        </p>
+    </div>
+    <div>
+        <p>
+            <span id="track-labelD">Track D</span> 
+            - Time: <span id="track-timeD">--</span>/<span id="track-lengthD">--</span>
+            Messages: <span id="track-msg-countD">0</span> . . .
+            <button onclick="looper.ChangeTrack(3)" id="select-trackD">Select</button>
+            <button onclick="looper.tracks[3].ToggleMute()" id="mute-trackD">Mute</button>
+        </p>
+    </div>
+    <script type="module" src="./js/main.js"></script>
+</body>
+
+</html>
