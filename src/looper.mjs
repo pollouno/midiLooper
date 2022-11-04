@@ -1,15 +1,18 @@
 import { Track } from "./track.mjs";
+import { WebMidi } from "webmidi";
 
-function Looper(onTickCallback = null) {
+function Looper(onLoadCallback = null, onTickCallback = null) {
     this.MAX_TRACK_LENGTH  = 16;    //In measures!
     this.MEASURE_LENGTH    = 4;
 
     this.current = {
+        time : 0,
         bpm : 120,
         measureLength : 2000,   //In ms!
         track : -1,
         Track : () => this.current.track == -1 ? null : this.track.trackArray[this.current.track],
-        isRecording : false
+        isRecording : false,
+        output : null
     }
 
     this.track = {
@@ -19,10 +22,11 @@ function Looper(onTickCallback = null) {
         },
         RemoveTrack : (trackID) => { this.trackArray.splice(trackID, 1); this.current.track = -1; },
         AreEmpty : () => {
-            this.track.trackArray.forEach(t => {
+            for (let i = 0; i < this.track.trackArray.length; i++) {
+                const t = this.track.trackArray[i];
                 if(!t.IsEmpty())
                     return false;
-            });
+            }
             return true;
         },
         Count : () => { return this.track.trackArray.length; },
@@ -49,24 +53,24 @@ function Looper(onTickCallback = null) {
             }
 
             switch(button) {
-                case REC_BUTTON:
+                case this.input.REC_BUTTON:
                     this.current.isRecording = changedTrack ? true : !this.current.isRecording;
                     if(!this.current.isRecording)
                         this.current.Track().EndSession();
                     break;
-               case PLAY_BUTTON:
+               case this.input.PLAY_BUTTON:
                     if(!this.current.Track().IsPlaying())
                         this.current.Track().Play();
                     else
                         this.current.Track().Pause();
                     break;
-                case STOP_BUTTON:
+                case this.input.STOP_BUTTON:
                     this.current.Track().Stop();
                     break;
-                case UNDO_BUTTON:
+                case this.input.UNDO_BUTTON:
                     this.current.Track().Undo();
                     break;
-                case CLEAR_BUTTON:
+                case this.input.CLEAR_BUTTON:
                     this.current.Track().Clear();
                     break;
             }
@@ -83,13 +87,29 @@ function Looper(onTickCallback = null) {
         this.current.measureLength = Math.round((60000 / bpm) * this.MEASURE_LENGTH);
     }
 
+    this.GetOutputs = () => WebMidi.outputs;
+    this.SetOutput = (id) => {
+        if(!id) {
+            this.current.output = null;
+            return;
+        }
+        this.current.output = WebMidi.getOutputById(id);
+    };
     this.OnTick = () => {
-        if(this.aux.lTick <= 0) {
+        if(this.track.AreEmpty()) {
+            this.current.time =  0;
+            this.aux.lTick    = -1;
+            return;
+        }
+        else if(this.aux.lTick <= 0) {
             this.aux.lTick = performance.now();
             return;
         }
+        
 
         const delta = (performance.now() - this.aux.lTick) / this.current.measureLength;
+        if(delta > 0.2)
+            console.log(delta);
         this.current.time = (this.current.time + delta) % this.MAX_TRACK_LENGTH;
         this.track.trackArray.forEach(t => { t.OnTick(delta); });
 
@@ -97,17 +117,32 @@ function Looper(onTickCallback = null) {
     }
 
     this.OnNoteOn  = (msg) => {
-        //Passthrough to channel !
-
+        this.ExecuteMessage(msg);
+        
+        console.log(msg);
         if(this.current.isRecording)
-            this.current.Track().RecordMessage(msg);
+        this.current.Track().RecordMessage(msg);
     };
     this.OnNoteOff = (msg) => {
-        //Passthrough to channel !
-
+        this.ExecuteMessage(msg);
+        
+        console.log(msg);
         if(this.current.isRecording)
             this.current.Track().RecordMessage(msg);
     };
+    this.ExecuteMessage = (msg) => {
+        let channel = this.current.output.channels[1];
+        channel.playNote(msg);
+    };
 
-    this.aux.tickInterval = setInterval(() => { this.OnTick(); onTickCallback?.(); });
+    this.aux.tickInterval = setInterval(() => { this.OnTick(); onTickCallback?.(); }, 4);
+    WebMidi.enable().then(() => {
+        WebMidi.addListener('noteon' , (e) => { this.OnNoteOn (e); } );
+        WebMidi.addListener('noteoff', (e) => { this.OnNoteOff(e); } );
+        console.log('WebMidi enabled!');
+        onLoadCallback?.();
+    })
+    .catch( (err) => alert(err) );
 }
+
+export { Looper };

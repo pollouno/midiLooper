@@ -8,7 +8,7 @@ function Track(looper) {
     this.time = 0;
     this.state = EMPTY;
 
-    this.quantize = 4;  // => 1/x
+    this.quantize = 0;  // => 1/x
     this.trackLength = -1;
     this.messages = [];
     this.trackPointer = 0;
@@ -20,9 +20,9 @@ function Track(looper) {
                 return;
             default:
                 let t = this.time;
-                this.time = (t + delta) % this.trackLength == -1 ? looper.MAX_TRACK_LENGTH : this.trackLength;
-                
-                if(Math.floor(t) != Math.floor(this.time) && state == WAITING_TO_STOP)
+                this.time = (t + delta) % (this.trackLength == -1 ? looper.MAX_TRACK_LENGTH : this.trackLength);
+
+                if(Math.floor(t) != Math.floor(this.time) && this.state == WAITING_TO_STOP)
                     this.Stop();
                 else if(this.time < t) {
                     this.messages.forEach(msg => { msg.played = false; });
@@ -36,8 +36,11 @@ function Track(looper) {
         
     };
     this.ExecuteNextMessage = () => {
-        this.looper.ExecuteMessage(this.messages[this.trackPointer]);
-        this.messages[this.trackPointer].played = true;
+        let msg = this.messages[this.trackPointer];
+        console.log(`${this.time}: for ${msg.time}`);
+        console.log(msg)
+        this.looper.ExecuteMessage(msg.message);
+        msg.played = true;
         this.trackPointer = (this.trackPointer + 1) % this.messages.length;
 
         this.CheckNextMessage();
@@ -62,9 +65,11 @@ function Track(looper) {
     this.RecordMessage = (msg) => {
         if(this.state == EMPTY)
             this.Begin();
-        this.messages.splice(this.trackPointer, 0, new TrackEvent(this, msg));
+        //this.messages.splice(this.trackPointer, 0, new TrackEvent(this, msg));
+        this.messages.push(new TrackEvent(this, msg));
+        this.messages.sort((a, b) => { return a.time - b.time; });
     };
-    this.Begin  = () => { this.state = PLAYING; this.time = looper.time % 1; }
+    this.Begin  = () => { this.state = PLAYING; this.time = looper.current.time % 1; }
     this.End    = () => { this.trackLength = this.time == 0 ? 1 : Math.ceil(this.time); }
     this.Play   = () => { this.state = PLAYING; };
     this.Pause  = () => {
@@ -83,7 +88,7 @@ function Track(looper) {
         this.trackLength = -1;
         this.messages = [];
         this.trackPointer = 0;
-        this.time = -1;
+        this.time = 0;
         this.state = EMPTY;
     };
     this.RemoveMessageAtPointer = () => {
