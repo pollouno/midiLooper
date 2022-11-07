@@ -96,7 +96,7 @@ function Looper(onLoadCallback = null, onTickCallback = null) {
         this.current.output = WebMidi.getOutputById(id);
     };
     this.OnTick = () => {
-        if(this.track.AreEmpty()) {
+        if(this.track.AreEmpty() && !this.current.isRecording) {
             this.current.time =  0;
             this.aux.lTick    = -1;
             return;
@@ -117,22 +117,31 @@ function Looper(onLoadCallback = null, onTickCallback = null) {
     }
 
     this.OnNoteOn  = (msg) => {
+        msg = { action: 'noteon', note: msg };
         this.ExecuteMessage(msg);
         
-        console.log(msg);
-        if(this.current.isRecording)
-        this.current.Track().RecordMessage(msg);
-    };
-    this.OnNoteOff = (msg) => {
-        this.ExecuteMessage(msg);
-        
-        console.log(msg);
         if(this.current.isRecording)
             this.current.Track().RecordMessage(msg);
     };
+    this.OnNoteOff = (msg) => {
+        msg = { action: 'noteoff', note: msg };
+        this.ExecuteMessage(msg);
+        
+        if(this.current.isRecording)
+            this.current.Track().RecordMessage(msg);
+    };
+    this.OnTrackStop = (channel) => { this.current.output.sendAllSoundOff(); }
     this.ExecuteMessage = (msg) => {
         let channel = this.current.output.channels[1];
-        channel.playNote(msg);
+        switch(msg.action)
+        {
+            case 'noteon':
+                channel.playNote(msg.note);
+                break;
+            case 'noteoff':
+                channel.stopNote(msg.note, { time : '+5' });
+                break;
+        }
     };
 
     this.aux.tickInterval = setInterval(() => { this.OnTick(); onTickCallback?.(); }, 4);

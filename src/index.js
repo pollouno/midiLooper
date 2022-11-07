@@ -91,27 +91,26 @@ addEventListener('keydown', (e) => {
             break;
     }
 });
-/*
+
 addEventListener('keyup',   (e) => {
     switch(e.key) {
         case 'a':
             looper.OnNoteOff(new Note(60));
             break;
         case 's':
-            looper.OnNoteOff(new Note(61));
-            break;
-        case 'd':
             looper.OnNoteOff(new Note(62));
             break;
-        case 'f':
-            looper.OnNoteOff(new Note(63));
-            break;
-        case 'g':
+        case 'd':
             looper.OnNoteOff(new Note(64));
             break;
-        case 'h':
+        case 'f':
             looper.OnNoteOff(new Note(65));
+            break;
+        case 'g':
+            looper.OnNoteOff(new Note(67));
+            break;
+        case 'h':
+            looper.OnNoteOff(new Note(69));
             break;
     }
 });
-*/

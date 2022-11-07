@@ -7,70 +7,78 @@ function Track(looper) {
     this.looper = looper;
     this.time = 0;
     this.state = EMPTY;
-
-    this.quantize = 0;  // => 1/x
+    this.isBeat    = false;
+    this.isMeasure = false;
+    this.quantize = 16;  // => 1/x
     this.trackLength = -1;
     this.messages = [];
-    this.trackPointer = 0;
     this.session = 0;
     this.OnTick = (delta) => {
         switch (this.state) {
             case EMPTY:
             case STOPPED:
+                this.isBeat = this.isMeasue = false;
                 return;
             default:
                 let t = this.time;
                 this.time = (t + delta) % (this.trackLength == -1 ? looper.MAX_TRACK_LENGTH : this.trackLength);
 
-                if(Math.floor(t) != Math.floor(this.time) && this.state == WAITING_TO_STOP)
+                this.isBeat = Math.floor(t * looper.MEASURE_LENGTH) != Math.floor(this.time * looper.MEASURE_LENGTH);
+                this.isMeasue = Math.floor(t) != Math.floor(this.time);
+
+                if(this.isBeat && this.state == WAITING_TO_STOP) {
                     this.Stop();
+                    return;
+                }
                 else if(this.time < t) {
                     this.messages.forEach(msg => { msg.played = false; });
                     if(this.trackLength == -1)
                         this.trackLength = looper.MAX_TRACK_LENGTH;
                 }
                 
-                this.CheckNextMessage();
+                this.CheckMessages();
                 break;
         }
         
     };
-    this.ExecuteNextMessage = () => {
-        let msg = this.messages[this.trackPointer];
-        console.log(`${this.time}: for ${msg.time}`);
-        console.log(msg)
-        this.looper.ExecuteMessage(msg.message);
+    this.ExecuteMessage = (msg) => {
         msg.played = true;
-        this.trackPointer = (this.trackPointer + 1) % this.messages.length;
-
-        this.CheckNextMessage();
+        this.looper.ExecuteMessage(msg.message);
     }; 
-    this.CheckNextMessage = () => {
+    this.CheckMessages = () => {
         if(this.messages.length < 1)
             return;
 
-        let msg = this.messages[this.trackPointer];
-        if(msg.time <= this.time && !msg.played)
-            this.ExecuteNextMessage();
+        this.messages.forEach(msg => {
+            if(msg.time <= this.time && !msg.played)
+                this.ExecuteMessage(msg);
+        });
     };
     this.Stop = () => {
         if(this.trackLength == -1)
             this.End();
 
         this.time = 0;
-        this.trackPointer = 0;
         this.messages.forEach((m) => { m.played = false; });
         this.state = STOPPED;
+        this.looper.OnTrackStop();
     };
     this.RecordMessage = (msg) => {
         if(this.state == EMPTY)
             this.Begin();
-        //this.messages.splice(this.trackPointer, 0, new TrackEvent(this, msg));
+            
         this.messages.push(new TrackEvent(this, msg));
-        this.messages.sort((a, b) => { return a.time - b.time; });
+        // this.messages.sort((a, b) => { return a.time - b.time; });
     };
-    this.Begin  = () => { this.state = PLAYING; this.time = looper.current.time % 1; }
-    this.End    = () => { this.trackLength = this.time == 0 ? 1 : Math.ceil(this.time); }
+    this.Begin  = () => {
+        this.state = PLAYING;
+        this.time = (looper.current.time * looper.MEASURE_LENGTH) % 1;
+        this.time /= looper.MEASURE_LENGTH;
+    }
+    this.End    = () => {
+        let nextBeat = Math.ceil(this.time * looper.MEASURE_LENGTH) / looper.MEASURE_LENGTH;
+        this.trackLength = this.time == 0 ? 1 : nextBeat;
+    }
     this.Play   = () => { this.state = PLAYING; };
     this.Pause  = () => {
         if(this.messages.length == 0) {
@@ -87,12 +95,8 @@ function Track(looper) {
     this.Clear = () => {
         this.trackLength = -1;
         this.messages = [];
-        this.trackPointer = 0;
         this.time = 0;
         this.state = EMPTY;
-    };
-    this.RemoveMessageAtPointer = () => {
-        this.messages.splice(this.trackPointer, 1);
     };
     this.EndSession = () => { this.session++; if(this.trackLength == -1) this.End(); }
     this.Undo = () => {
@@ -105,6 +109,10 @@ function Track(looper) {
                 this.messages[i] = null;
         }
         this.messages = this.messages.filter((n) => n);
+        if(this.messages.length < 1) {
+            this.Clear();
+            return;
+        }
         this.session--;
     }
     this.IsPlaying = () => this.state == PLAYING;
