@@ -11,7 +11,7 @@ const progressLabel  = document.getElementById("progress-label");
 const timeLabel      = document.getElementById("time");
 
 const recButton      = document.getElementById("rec-button");
-const playButton    = document.getElementById("play-button");
+const playButton     = document.getElementById("play-button");
 const undoButton     = document.getElementById("undo-button");
 const clearButton    = document.getElementById("clear-button");
 
