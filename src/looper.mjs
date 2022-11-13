@@ -20,7 +20,7 @@ function Looper(onLoadCallback = null, onTickCallback = null) {
             this.track.trackArray.splice(this.track.Count() - 1, 0, new Track(this));
             this.current.track = this.track.Count() - 1;
         },
-        RemoveTrack : (trackID) => { this.trackArray.splice(trackID, 1); this.current.track = -1; },
+        RemoveTrack : (trackID) => { this.track.trackArray.splice(trackID, 1); this.current.track = -1; },
         AreEmpty : () => {
             for (let i = 0; i < this.track.trackArray.length; i++) {
                 const t = this.track.trackArray[i];
@@ -40,10 +40,11 @@ function Looper(onLoadCallback = null, onTickCallback = null) {
         UNDO_BUTTON  : 3,
         CLEAR_BUTTON : 4,
         OnButton : (button) => {
-            
+            this.aux.lTap = 0;
         },
         OnTrackButton : (track, button) => {
             let changedTrack = false;
+            this.aux.lTap = 0;
             if(track != this.current.track) {
                 this.track.trackArray[this.current.track].OnDeselect();
                 this.track.trackArray[track].OnSelect();
@@ -79,6 +80,7 @@ function Looper(onLoadCallback = null, onTickCallback = null) {
 
     this.aux = {
         lTick : 0,
+        lTap : 0,
         tickInterval : null
     }
 
@@ -86,14 +88,37 @@ function Looper(onLoadCallback = null, onTickCallback = null) {
         this.current.bpm = bpm;
         this.current.measureLength = Math.round((60000 / bpm) * this.MEASURE_LENGTH);
     }
+    this.Tap = () => {
+        if(this.aux.lTap == 0) {
+            this.aux.lTap = performance.now();
+            return;
+        }
+        let t = performance.now() - this.aux.lTap;
 
+        if(t > 1000) {
+            this.aux.lTap = 0;
+            return;
+        }
+
+        this.SetBPM(Math.floor(60000 / t));
+        this.aux.lTap = performance.now();
+    }
+
+    this.GetInputs  = () => WebMidi.inputs;
     this.GetOutputs = () => WebMidi.outputs;
-    this.SetOutput = (id) => {
+    this.SetInput = (id = null) => {
+        if(!id) {
+            this.current.input = null;
+            return;
+        }
+        this.current.input = WebMidi.getInputByName(id);
+    };
+    this.SetOutput = (id = null) => {
         if(!id) {
             this.current.output = null;
             return;
         }
-        this.current.output = WebMidi.getOutputById(id);
+        this.current.output = WebMidi.getOutputByName(id);
     };
     this.OnTick = () => {
         if(this.track.AreEmpty() && !this.current.isRecording) {
@@ -131,15 +156,15 @@ function Looper(onLoadCallback = null, onTickCallback = null) {
             this.current.Track().RecordMessage(msg);
     };
     this.OnTrackStop = (channel) => { this.current.output.sendAllSoundOff(); }
-    this.ExecuteMessage = (msg) => {
-        let channel = this.current.output.channels[1];
+    this.ExecuteMessage = (msg, channel) => {
+        let out = channel == 0 ? this.current.output : this.current.output.channels[channel];
         switch(msg.action)
         {
             case 'noteon':
-                channel.playNote(msg.note);
+                out.playNote(msg.note);
                 break;
             case 'noteoff':
-                channel.stopNote(msg.note, { time : '+5' });
+                out.stopNote(msg.note);
                 break;
         }
     };

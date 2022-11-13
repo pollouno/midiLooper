@@ -6,6 +6,7 @@ function Track(looper) {
     
     this.looper = looper;
     this.time = 0;
+    this.toChannel = 0;
     this.state = EMPTY;
     this.isBeat    = false;
     this.isMeasure = false;
@@ -41,9 +42,15 @@ function Track(looper) {
         }
         
     };
+    this.SetChannel = (ch) => {
+        if(ch < 0 || ch > 16)
+            return;
+        this.toChannel = ch;
+        console.log(`Track channel set to ${ch}!`);
+    }
     this.ExecuteMessage = (msg) => {
         msg.played = true;
-        this.looper.ExecuteMessage(msg.message);
+        this.looper.ExecuteMessage(msg.message, this.toChannel);
     }; 
     this.CheckMessages = () => {
         if(this.messages.length < 1)
